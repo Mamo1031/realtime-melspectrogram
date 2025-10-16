@@ -1,8 +1,4 @@
-"""Audio input streaming utility
-
-It prints a compact device table on startup to help users find the right
-device index and channel configuration.
-"""
+"""Audio input streaming utility (prints a compact device table on startup)."""
 
 import pyaudio
 import numpy as np
@@ -10,27 +6,7 @@ from typing import Callable, Dict, List, Optional
 
 
 class AudioInputStream:
-    """Continuous microphone capture with device selection and fixed-size frames.
-
-    The class enumerates available input devices, chooses one either by
-    explicit `input_device_index` or by fuzzy name match (`input_device_keyword`)
-    and matching `maxInputChannels`, opens a PyAudio input stream, and passes
-    deinterleaved frames to a user-provided callback.
-
-    Attributes:
-        maxInputChannels (int): Desired number of input channels to match
-            when searching by keyword. Does not change the hardware capability.
-        CHUNK (int): Number of frames per buffer (per channel) read from the stream.
-        format (int): PyAudio sample format (e.g., ``pyaudio.paFloat32`` or ``paInt16``).
-        RATE (int): Sample rate selected from the chosen device (fallback 44100).
-        CHANNELS (int): Channel count selected from the chosen device (fallback 2).
-        dtype (np.dtype): Numpy dtype corresponding to ``format`` for fast conversion.
-        p (pyaudio.PyAudio): Underlying PyAudio instance.
-        input_device_index (Optional[int]): Index of the selected input device.
-        input_device_name (Optional[str]): Human-readable name of the selected device.
-        devices (List[Dict]): Cached device info objects enumerated at open time.
-        stream (pyaudio.Stream): Active input stream once opened.
-    """
+    """Capture audio frames with simple device selection and callback delivery."""
 
     def __init__(
         self,
@@ -40,21 +16,7 @@ class AudioInputStream:
         maxInputChannels: int = 2,
         input_device_index: Optional[int] = None,
     ) -> None:
-        """Initialize the stream wrapper and open an input device.
-
-        Args:
-            format: PyAudio format (``pyaudio.paFloat32`` or ``pyaudio.paInt16``).
-            input_device_keyword: Substring used to match a device name when
-                ``input_device_index`` is not provided.
-            CHUNK: Frames per buffer (per channel) for each read.
-            maxInputChannels: Expected number of input channels to match against
-                device capability when selecting by keyword.
-            input_device_index: Explicit device index to force selection. If
-                provided, ``input_device_keyword`` is ignored.
-
-        Raises:
-            ValueError: If an unsupported PyAudio format is specified.
-        """
+        """Open an input device and prepare fixed-size frame capture."""
         self.maxInputChannels: int = maxInputChannels
         self.CHUNK: int = CHUNK
         self.format: int = format
@@ -75,11 +37,7 @@ class AudioInputStream:
         )
 
     def get_params(self) -> Dict[str, int]:
-        """Return current runtime parameters.
-
-        Returns:
-            Dict[str, int]: A mapping with keys ``RATE``, ``CHUNK``, and ``CHANNELS``.
-        """
+        """Return ``{"RATE","CHUNK","CHANNELS"}`` mapping."""
         params_dict = {
             "RATE": self.RATE,
             "CHUNK": self.CHUNK,
@@ -89,15 +47,7 @@ class AudioInputStream:
 
     @staticmethod
     def list_input_devices() -> List[Dict]:
-        """Enumerate input/output audio devices visible to PyAudio.
-
-        Returns:
-            List[Dict]: Raw device info dictionaries as returned by PyAudio.
-
-        Notes:
-            This creates and terminates a temporary PyAudio instance to avoid
-            interfering with an already-open stream.
-        """
+        """Return raw device info dicts visible to PyAudio."""
         p = pyaudio.PyAudio()
         devices: List[Dict] = []
         try:
@@ -111,17 +61,7 @@ class AudioInputStream:
     def __open_stream(
         self, input_device_keyword: str, input_device_index: Optional[int]
     ) -> None:
-        """Choose an input device and open the PyAudio input stream.
-
-        Device selection strategy:
-          1) If ``input_device_index`` is given and valid → select it.
-          2) Else, find the first device whose name contains
-             ``input_device_keyword`` **and** whose ``maxInputChannels`` equals
-             ``self.maxInputChannels``.
-          3) Else, fall back to the system default input device (best effort).
-
-        Prints a device table to aid manual selection/debugging.
-        """
+        """Pick device by index/keyword (fallback to default) and open stream."""
         self.input_device_index: Optional[int] = None
         self.input_device_name: Optional[str] = None
         self.devices: List[Dict] = []
@@ -195,17 +135,7 @@ class AudioInputStream:
         return None
 
     def run(self, callback_sigproc: Callable[[np.ndarray], None]) -> None:
-        """Continuously read frames and feed them to a processing callback.
-
-        The callback receives a 2D NumPy array of shape ``[channels, chunk]``,
-        deinterleaved from the raw interleaved device buffer. The loop runs
-        until the stream becomes inactive or an exception escapes.
-
-        Args:
-            callback_sigproc: A function that accepts a float/int NumPy array
-                of shape ``[channels, chunk]`` and performs downstream work
-                (e.g., feature extraction or visualization).
-        """
+        """Read frames in a loop and pass ``[channels, chunk]`` arrays to callback."""
         try:
             while self.stream.is_active():
                 input_buff = self.stream.read(self.CHUNK, exception_on_overflow=False)
@@ -223,7 +153,7 @@ class AudioInputStream:
             self.__terminate()
 
     def __terminate(self) -> None:
-        """Best-effort shutdown of stream and host without raising."""
+        """Best-effort shutdown without raising."""
         try:
             if self.stream.is_active():
                 self.stream.stop_stream()
@@ -240,20 +170,19 @@ class AudioInputStream:
 
     # Public close for context-manager style
     def close(self) -> None:
-        """Close the stream and terminate the PyAudio host."""
+        """Close resources."""
         self.__terminate()
 
     def __enter__(self) -> "AudioInputStream":
-        """Enter the context manager."""
+        """Context enter."""
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        """Exit the context manager."""
+        """Context exit."""
         self.__terminate()
 
 
 def test_callback_sigproc(sig):
-    """Test callback function for the audio stream."""
     print(sig.shape)
 
 
