@@ -3,6 +3,7 @@
 import pyaudio
 import numpy as np
 from typing import Callable, Dict, List, Optional
+from . import config
 
 
 class AudioInputStream:
@@ -10,10 +11,10 @@ class AudioInputStream:
 
     def __init__(
         self,
-        format: int = pyaudio.paFloat32,
-        input_device_keyword: str = "VoiceMeeter Output",
-        CHUNK: int = 1024,
-        maxInputChannels: int = 2,
+        format: int = config.PYAUDIO_FORMAT,
+        input_device_keyword: str = config.INPUT_DEVICE_KEYWORD,
+        CHUNK: int = config.CHUNK,
+        maxInputChannels: int = config.MAX_INPUT_CHANNELS,
         input_device_index: Optional[int] = None,
     ) -> None:
         """Open an input device and prepare fixed-size frame capture."""

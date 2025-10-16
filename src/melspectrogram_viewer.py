@@ -9,6 +9,7 @@ from pyqtgraph.Qt import QtCore
 from PyQt5.QtWidgets import QApplication
 
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
+from . import config
 
 
 class MelSpectrogramViewer:
@@ -18,11 +19,11 @@ class MelSpectrogramViewer:
         self,
         sr: int,
         shape: Tuple[int, int],
-        n_mels: int = 128,
-        n_frames: int = 50,
-        fps: int = 50,
-        size: Tuple[int, int] = (1000, 1000),
-        title: str = "realtime melspectrogram",
+        n_mels: int = config.N_MELS,
+        n_frames: int = config.N_FRAMES,
+        fps: int = config.FPS,
+        size: Tuple[int, int] = config.WINDOW_SIZE,
+        title: str = config.TITLE,
     ) -> None:
         """Initialize buffers, mel filterbank, and PyQtGraph widgets."""
         # signal/fft/mel parameters and buffers
@@ -51,13 +52,14 @@ class MelSpectrogramViewer:
         win.show()
 
         # ImageItem and colormap
-        if "magma" in Gradients:
-            cmap = pg.ColorMap(*zip(*Gradients["magma"]["ticks"]))
+        if config.COLORMAP_NAME in Gradients:
+            cmap = pg.ColorMap(*zip(*Gradients[config.COLORMAP_NAME]["ticks"]))
         else:
-            raise ValueError("指定されたカラーマップ 'magma' は存在しません")
+            raise ValueError(
+                f"The specified color map '{config.COLORMAP_NAME}' does not exist"
+            )
 
         imageitem = pg.ImageItem(border="k")
-        # cmap = pg.colormap.getFromMatplotlib("magma")
         bar = pg.ColorBarItem(colorMap=cmap)
         bar.setImageItem(imageitem)
         imageitem.setLookupTable(cmap.getLookupTable())
@@ -79,15 +81,15 @@ class MelSpectrogramViewer:
 
         # PlotItem
         plotitem = pg.PlotItem(viewBox=viewbox, axisItems={"left": axis_left})
-        # グラフの範囲
+        # graph range
         plotitem.setLimits(
             minXRange=0, maxXRange=self.n_frames, minYRange=0, maxYRange=self.n_mels
         )
-        # アスペクト比固定
+        # aspect ratio fixed
         plotitem.setAspectLocked(lock=True)
-        # マウス操作無効
+        # mouse operation disabled
         plotitem.setMouseEnabled(x=False, y=False)
-        # ラベルのセット
+        # label set
         plotitem.setLabels(bottom="Time (s)", left="Frequency (Hz)")
 
         def custom_xticks():
@@ -113,7 +115,6 @@ class MelSpectrogramViewer:
         """Start a Qt timer to update the image at the target FPS."""
         timer = QtCore.QTimer()
         timer.timeout.connect(self.update)
-        # timer.start(1 / self.fps * 1000)
 
         fps = float(self.fps) if getattr(self, "fps", None) else 60.0
         interval_ms = max(1, int(round(1000.0 / fps)))
@@ -127,17 +128,17 @@ class MelSpectrogramViewer:
         if self.iter > 0:
             self.viewbox.disableAutoRange()
 
-        # 最新をスペクトログラム格納するインデックス
+        # index to store the latest mel spectrogram
         idx = self.iter % self.n_frames
-        # モノラル信号算出
+        # mono signal calculation
         self.x[:] = 0.5 * (self.sig[0] + self.sig[1])
-        # FFT => パワー算出
+        # FFT => power calculation
         self.x[:] = self.x[:] * self.window
         self.specs[:] = np.abs(self.fft(self.x)) ** 2
-        # メルスペクトログラム算出
+        # mel spectrogram calculation
         self.melspecs[idx, :] = np.dot(self.melfb, self.specs)
 
-        # 描画
+        # draw image
         pos = idx + 1 if idx < self.n_frames else 0
         self.imageitem.setImage(
             librosa.power_to_db(
