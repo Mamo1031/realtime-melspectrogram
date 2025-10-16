@@ -1,0 +1,17 @@
+# Temporary files generated during development and compilation
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv
+venv/
+env/
+
+# Distribution and packaging
+*.egg-info/
+build/
+dist/
+
+# Data and logs
+data/
+*.log
