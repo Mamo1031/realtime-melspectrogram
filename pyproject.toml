@@ -11,3 +11,12 @@ dependencies = [
     "pyqt5>=5.15.11",
     "pyqtgraph>=0.13.7",
 ]
+
+[project.scripts]
+run-spec = "src.run:main"
+
+[tool.uv]
+package = true
+
+[tool.setuptools]
+packages = ["src"]
