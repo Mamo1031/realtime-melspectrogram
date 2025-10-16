@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "librosa>=0.11.0",
-    "numba>=0.62.1",
     "numpy>=2.3.4",
     "pyaudio>=0.2.14",
     "pyqt5>=5.15.11",
